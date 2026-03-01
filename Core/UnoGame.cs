@@ -13,15 +13,8 @@ using System.Linq;
 namespace UnoGame.Core
 {
     /// <summary>
-    /// UNO oyununun ana motoru — Resmi UNO kurallarına uygun
-    /// 
-    /// Kurallar:
-    /// - Kart çekme: 1 kart çek, atılabiliyorsa at veya pas geç
-    /// - DrawTwo: +2 çek VE sıra atlanır
-    /// - WildDrawFour: Renk seç + sonraki +4 çeker VE sıra atlanır
-    /// - Skip: Sonraki oyuncu atlanır
-    /// - Reverse: Yön değişir
-    /// - UNO!: 1 kart kaldığında UNO demezsen +2 ceza
+    /// UNO oyununun ana motoru. Resmi UNO kurallarına uygun şekilde
+    /// kart atma, çekme, pas geçme, UNO çağırma ve tur yönetimini sağlar.
     /// </summary>
     public class UnoGame : BaseGame
     {
@@ -29,24 +22,14 @@ namespace UnoGame.Core
         private readonly UnoGameRules _unoRules;
         private readonly GameEventDispatcher _eventDispatcher;
 
-        // Gerçek kart yönetimi
         private UnoDeck? _deck;
         private readonly Dictionary<string, PlayerHand> _playerHands;
-
-        // UNO! mekanizması
-        // Oyuncu 1 kart kaldığında buraya eklenir
-        // UNO çağırmazsa ve sıra geçerse +2 ceza
         private readonly Dictionary<string, bool> _pendingUnoCall;
 
-        // Kart çekme sonrası durum
-        // Oyuncu kart çekti mi? (Çektiyse ikinci kez çekemez)
         private bool _hasDrawnThisTurn;
-        // Çekilen kart atılabilir mi? (atılabilirse oyuncuya bildirilir)
         private UnoCard? _lastDrawnCard;
 
         public ITurnManager? CurrentTurnManager => TurnManager;
-
-        /// <summary>Oyun bitti mi? (WebSocketHandler tarafından kontrol edilebilir)</summary>
         public bool IsGameFinished => State.Status == GameCore.Enums.GameStatus.Completed;
 
         public UnoGame(string gameId) 
@@ -101,7 +84,6 @@ namespace UnoGame.Core
                 _unoState.LastPlayedCard.ToString()
             );
             _eventDispatcher.DispatchAsync(gameStartedEvent);
-            Console.WriteLine("Event: Oyun basladi eventi gonderildi");
         }
 
         protected override void OnGameEnded()
@@ -131,11 +113,11 @@ namespace UnoGame.Core
         // ═══════════════════════════════════════════
 
         /// <summary>
-        /// Oyuncu kart atar (Wild kartlar için renk seçimi opsiyonel)
+        /// Oyuncunun kart atmasını işler. Wild kartlar için opsiyonel renk seçimi alır.
+        /// Sıra kontrolü, penalty kontrolü, kart geçerliliği ve özel efektleri uygular.
         /// </summary>
         public void PlayCard(string playerId, UnoCard card, UnoCard.CardColor? chosenColor = null)
         {
-            // ADIM 0: Oyun bitti mi kontrolü
             if (IsGameFinished)
             {
                 throw new GameRuleViolationException(
@@ -144,10 +126,8 @@ namespace UnoGame.Core
                     GameId);
             }
 
-            // Önceki oyuncunun UNO kontrolü
             CheckPendingUnoCalls();
 
-            // ADIM 1: Sıra kontrolü
             if (TurnManager == null || !TurnManager.IsPlayerTurn(playerId))
             {
                 throw new InvalidPlayerActionException(
@@ -156,10 +136,9 @@ namespace UnoGame.Core
                     GameId);
             }
 
-            // ADIM 2: DrawPenalty varsa — sadece Draw kartı atabilir (stacking)
+            // DrawPenalty varsa sadece Draw kartı atılabilir (stacking)
             if (_unoState.DrawPenalty > 0)
             {
-                // Draw kartı üstüne Draw kartı atılabilir (stacking)
                 bool isDrawCard = card.Type == UnoCard.CardType.DrawTwo || 
                                   card.Type == UnoCard.CardType.WildDrawFour;
                 
@@ -170,10 +149,8 @@ namespace UnoGame.Core
                         "DrawPenaltyRequired", 
                         GameId);
                 }
-                // Draw kartı — stacking devam eder, normal validasyona geç
             }
 
-            // ADIM 3: Kartın elde var mı kontrolü
             if (_playerHands.ContainsKey(playerId) && !_playerHands[playerId].HasCard(card))
             {
                 throw new GameRuleViolationException(
@@ -182,7 +159,6 @@ namespace UnoGame.Core
                     GameId);
             }
 
-            // ADIM 4: Kart geçerliliği kontrolü
             if (_unoState.LastPlayedCard != null && 
                 !_unoRules.CanPlayCard(card, _unoState.LastPlayedCard))
             {
@@ -192,11 +168,10 @@ namespace UnoGame.Core
                     GameId);
             }
 
-            // ADIM 5: State güncelleme
+            // State güncelleme
             _unoState.LastPlayedCard = card;
 
             // Wild kart renk seçimi
-            // chosen_color varsa onu kullan, yoksa eldeki en çok renkten seç
             if (card.Color == UnoCard.CardColor.Wild)
             {
                 if (chosenColor.HasValue)
@@ -219,7 +194,7 @@ namespace UnoGame.Core
                 Console.WriteLine($"Secilen renk: {_unoState.LastPlayedCard.ChosenColor}");
             }
             
-            // Kartı elden çıkar ve desteye at
+            // Kartı elden çıkar
             if (_playerHands.ContainsKey(playerId))
             {
                 _playerHands[playerId].RemoveCard(card);
@@ -242,7 +217,6 @@ namespace UnoGame.Core
                 _pendingUnoCall[playerId] = true;
             }
 
-            // EVENT: Kart atıldı
             var cardPlayedEvent = new CardPlayedEvent(
                 playerId,
                 GameId,
@@ -251,33 +225,25 @@ namespace UnoGame.Core
             );
             _eventDispatcher.DispatchAsync(cardPlayedEvent);
 
-            // ADIM 6: Özel kart efektleri
             bool skipNextPlayer = ApplyCardEffect(card);
 
-            // ADIM 7: Oyun bitiş kontrolü
             if (_unoRules.IsGameOver(State))
             {
                 EndGame();
                 return;
             }
 
-            // ADIM 8: Sonraki tura geçiş
             AdvanceToNextTurn(skipNextPlayer);
         }
 
         // ═══════════════════════════════════════════
-        //  KART ÇEKME (Resmi Kural: Sadece 1 kart)
+        //  KART ÇEKME
         // ═══════════════════════════════════════════
 
         /// <summary>
-        /// Oyuncu kart çeker
-        /// 
-        /// Resmi kural:
-        /// - DrawPenalty varsa: penalty kadar çek, sıra otomatik geçer
-        /// - DrawPenalty yoksa: sadece 1 kart çek
-        ///   - Çekilen kart atılabiliyorsa: oyuncu atabilir veya pas geçebilir
-        ///   - Çekilen kart atılamıyorsa: sıra otomatik geçer
-        /// - Bir turda sadece 1 kez çekilebilir
+        /// Oyuncunun kart çekmesini işler.
+        /// DrawPenalty varsa ceza kartları çekilir ve sıra geçer.
+        /// Normal durumda turda 1 kez çekilebilir; çekilen kart atılabiliyorsa oyuncuya bildirilir.
         /// </summary>
         public void DrawCard(string playerId)
         {
@@ -289,7 +255,6 @@ namespace UnoGame.Core
                     GameId);
             }
 
-            // Oyun bitti mi kontrolü
             if (IsGameFinished)
             {
                 throw new GameRuleViolationException(
@@ -298,17 +263,16 @@ namespace UnoGame.Core
                     GameId);
             }
 
-            // Önceki oyuncunun UNO kontrolü
             CheckPendingUnoCalls();
 
-            // Penalty çekme
+            // Ceza kartı çekme
             if (_unoState.DrawPenalty > 0)
             {
                 DrawPenaltyCards(playerId);
                 return;
             }
 
-            // Normal çekme — turda sadece 1 kez
+            // Turda sadece 1 kez çekilebilir
             if (_hasDrawnThisTurn)
             {
                 throw new GameRuleViolationException(
@@ -319,7 +283,6 @@ namespace UnoGame.Core
 
             if (_deck == null || !_playerHands.ContainsKey(playerId)) return;
 
-            // 1 kart çek
             var drawnCards = _deck.Draw(1);
             _playerHands[playerId].AddCards(drawnCards);
             _unoState.PlayerCardCounts[playerId] = _playerHands[playerId].Count;
@@ -338,14 +301,13 @@ namespace UnoGame.Core
             );
             _eventDispatcher.DispatchAsync(cardDrawnEvent);
 
-            // Çekilen kart atılabilir mi kontrol et
+            // Çekilen kart atılabilir mi?
             bool canPlayDrawn = _lastDrawnCard != null && 
                                 _unoState.LastPlayedCard != null &&
                                 _unoRules.CanPlayCard(_lastDrawnCard, _unoState.LastPlayedCard);
 
             if (!canPlayDrawn)
             {
-                // Çekilen kart atılamıyor — sıra otomatik geçer
                 Console.WriteLine($"Cekilen kart atilamaz, sira geciyor.");
                 AdvanceToNextTurn(false);
             }
@@ -356,7 +318,7 @@ namespace UnoGame.Core
         }
 
         /// <summary>
-        /// DrawPenalty ceza kartlarını çeker ve sıra geçer
+        /// DrawPenalty ceza kartlarını çeker ve sırayı sonraki oyuncuya geçirir.
         /// </summary>
         private void DrawPenaltyCards(string playerId)
         {
@@ -382,7 +344,6 @@ namespace UnoGame.Core
             );
             _eventDispatcher.DispatchAsync(cardDrawnEvent);
 
-            // Penalty sonrası sıra geçer
             AdvanceToNextTurn(false);
         }
 
@@ -391,8 +352,7 @@ namespace UnoGame.Core
         // ═══════════════════════════════════════════
 
         /// <summary>
-        /// Oyuncu kart çektikten sonra oynamamayı tercih ederse
-        /// sırayı geçirir. Sadece kart çekildikten sonra kullanılabilir.
+        /// Kart çektikten sonra oynamamayı tercih eden oyuncunun sırasını geçirir.
         /// </summary>
         public void PassTurn(string playerId)
         {
@@ -412,7 +372,6 @@ namespace UnoGame.Core
                     GameId);
             }
 
-            // Oyun bitti mi kontrolü
             if (IsGameFinished)
             {
                 throw new GameRuleViolationException(
@@ -421,7 +380,6 @@ namespace UnoGame.Core
                     GameId);
             }
 
-            // Önceki oyuncunun UNO kontrolü
             CheckPendingUnoCalls();
 
             Console.WriteLine($"{GetPlayerName(playerId)} pas gecti.");
@@ -433,8 +391,7 @@ namespace UnoGame.Core
         // ═══════════════════════════════════════════
 
         /// <summary>
-        /// Oyuncu UNO! çağırır (1 kart kaldığında)
-        /// Sıra geçmeden önce çağırmalı, yoksa +2 ceza
+        /// Oyuncu UNO çağırır. 1 kart kaldığında sıra geçmeden çağrılmazsa +2 ceza uygulanır.
         /// </summary>
         public void CallUno(string playerId)
         {
@@ -450,8 +407,7 @@ namespace UnoGame.Core
         }
 
         /// <summary>
-        /// Bir oyuncunun UNO demediğini kontrol eder
-        /// Sıra geçtiğinde çağrılır — UNO dememiş oyuncuya +2 ceza
+        /// UNO dememiş oyuncuları kontrol eder ve +2 ceza uygular.
         /// </summary>
         private void CheckPendingUnoCalls()
         {
@@ -462,7 +418,6 @@ namespace UnoGame.Core
 
             foreach (var pid in pendingPlayers)
             {
-                // +2 ceza kartı
                 if (_deck != null && _playerHands.ContainsKey(pid))
                 {
                     var penaltyCards = _deck.Draw(2);
@@ -483,9 +438,6 @@ namespace UnoGame.Core
             }
         }
 
-        /// <summary>
-        /// Bir oyuncunun UNO bekleyip beklemediğini kontrol eder
-        /// </summary>
         public bool HasPendingUnoCall(string playerId)
         {
             return _pendingUnoCall.TryGetValue(playerId, out var pending) && pending;
@@ -496,15 +448,10 @@ namespace UnoGame.Core
         // ═══════════════════════════════════════════
 
         /// <summary>
-        /// Sırayı bir sonraki oyuncuya geçirir
-        /// Skip parametresi: true ise sonraki oyuncu atlanır
+        /// Sırayı sonraki oyuncuya geçirir. skipNextPlayer true ise bir oyuncu atlanır (Skip kartı).
         /// </summary>
         private void AdvanceToNextTurn(bool skipNextPlayer)
         {
-            // NOT: CheckPendingUnoCalls burada DEĞİL, sonraki oyuncunun
-            // aksiyonunda çalışır. Bu sayede oyuncu UNO butonuna basma
-            // şansı bulur.
-
             TurnManager!.EndTurn();
             TurnManager.NextTurn();
 
@@ -516,7 +463,6 @@ namespace UnoGame.Core
 
             TurnManager.StartTurn();
 
-            // Yeni tur başlangıcı
             _hasDrawnThisTurn = false;
             _lastDrawnCard = null;
 
@@ -535,18 +481,9 @@ namespace UnoGame.Core
         // ═══════════════════════════════════════════
 
         /// <summary>
-        /// Özel kart efektlerini uygular
-        /// Dönüş: true ise bir sonraki oyuncu TAMAMEN atlanır (Skip kartı)
-        /// 
-        /// Resmi kurallar:
-        /// - Skip: sonraki oyuncu atlanır → return true
-        /// - DrawTwo: +2 ceza, sıra cezalı oyuncuya geçer (sadece çeker) → return false
-        /// - WildDrawFour: +4 ceza, sıra cezalı oyuncuya geçer (sadece çeker) → return false
-        /// - Reverse: yön değişir → return false
-        /// 
-        /// NOT: DrawTwo/WildDrawFour skip YAPMAZ!
-        /// Cezalı oyuncunun sırası gelir, sadece kart çekebilir (PlayCard'da DrawPenalty kontrolü var),
-        /// çektikten sonra DrawPenaltyCards otomatik olarak sırayı geçirir.
+        /// Özel kart efektlerini uygular.
+        /// Skip → sonraki oyuncu atlanır, Reverse → yön değişir,
+        /// DrawTwo → +2 ceza, WildDrawFour → +4 ceza.
         /// </summary>
         private bool ApplyCardEffect(UnoCard card)
         {
@@ -567,12 +504,12 @@ namespace UnoGame.Core
                 case UnoCard.CardType.DrawTwo:
                     _unoState.DrawPenalty += 2;
                     Console.WriteLine("+2 Bir sonraki oyuncu 2 kart cekecek!");
-                    return false;  // Skip YAPMA — sıra cezalı oyuncuya geçsin
+                    return false;
 
                 case UnoCard.CardType.WildDrawFour:
                     _unoState.DrawPenalty += 4;
                     Console.WriteLine("+4 Bir sonraki oyuncu 4 kart cekecek!");
-                    return false;  // Skip YAPMA — sıra cezalı oyuncuya geçsin
+                    return false;
 
                 default:
                     return false;
@@ -588,12 +525,14 @@ namespace UnoGame.Core
             return _playerHands.TryGetValue(playerId, out var hand) ? hand.Cards : null;
         }
 
+        /// <summary>
+        /// Oyuncunun atılabilir kartlarını döndürür. DrawPenalty varsa sadece Draw kartları listelenir.
+        /// </summary>
         public List<UnoCard>? GetPlayableCards(string playerId)
         {
             if (_unoState.LastPlayedCard == null) return null;
             if (!_playerHands.TryGetValue(playerId, out var hand)) return null;
 
-            // DrawPenalty varsa sadece Draw kartları atilabilir (stacking)
             if (_unoState.DrawPenalty > 0)
             {
                 return hand.Cards
@@ -605,13 +544,9 @@ namespace UnoGame.Core
             return hand.GetPlayableCards(_unoState.LastPlayedCard);
         }
 
-        /// <summary>Ortadaki son kart (UI için)</summary>
         public UnoCard? LastPlayedCard => _unoState.LastPlayedCard;
-
-        /// <summary>Bu turda kart çekildi mi?</summary>
         public bool HasDrawnThisTurn => _hasDrawnThisTurn;
 
-        /// <summary>Çekilen kart atılabilir mi?</summary>
         public bool CanPlayDrawnCard
         {
             get

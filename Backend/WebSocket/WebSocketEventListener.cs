@@ -14,15 +14,8 @@ using System.Collections.Generic;
 namespace UnoGame.Backend.WebSocket
 {
     /// <summary>
-    /// Oyun eventlerini WebSocket üzerinden tüm bağlı oyunculara broadcast eder
-    /// 
-    /// IAsyncGameEventListener implement eder — oyun eventlerini dinler
-    /// Her event geldiğinde JSON-RPC formatında tüm bağlı client'lara gönderir
-    /// 
-    /// Bu sayede mobil oyuncular gerçek zamanlı olarak:
-    /// - Kimin hangi kartı attığını görür
-    /// - Sıranın kime geçtiğini bilir
-    /// - Oyun başlangıç/bitiş bildirimlerini alır
+    /// Oyun event'lerini WebSocket üzerinden tüm bağlı client'lara broadcast eden listener.
+    /// Her event JSON-RPC formatında serialize edilip gönderilir.
     /// </summary>
     public class WebSocketEventListener : IAsyncGameEventListener
     {
@@ -33,7 +26,7 @@ namespace UnoGame.Backend.WebSocket
 
         private readonly JsonSerializerOptions _jsonOptions = new()
         {
-            WriteIndented = false, // WebSocket'te compact JSON
+            WriteIndented = false,
             DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
         };
 
@@ -187,8 +180,6 @@ namespace UnoGame.Backend.WebSocket
 
             return JsonSerializer.Serialize(request, _jsonOptions);
         }
-
-        // --- Helpers ---
 
         private CardDto ConvertCard(UnoGame.Models.Cards.UnoCard card)
         {

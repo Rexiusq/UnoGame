@@ -10,33 +10,22 @@ using System.Threading.Tasks;
 namespace UnoGame.Backend.WebSocket
 {
     /// <summary>
-    /// WebSocket bağlantılarını yöneten sınıf
-    /// 
-    /// Ne yapar?
-    /// - Bağlı oyuncuları takip eder (playerId → WebSocket eşleştirmesi)
-    /// - Belirli bir oyuncuya mesaj gönderir
-    /// - Tüm oyunculara broadcast yapar
-    /// - Bağlantı koptuğunda temizlik yapar
-    /// 
-    /// Thread-safe: ConcurrentDictionary kullanır
+    /// WebSocket bağlantılarını yöneten sınıf.
+    /// PlayerId bazlı bağlantı takibi, unicast ve broadcast mesajlaşmayı sağlar.
+    /// Thread-safe: ConcurrentDictionary kullanır.
     /// </summary>
     public class WebSocketConnectionManager
     {
-        // PlayerId → WebSocket eşleştirmesi
         private readonly ConcurrentDictionary<string, System.Net.WebSockets.WebSocket> _connections = new();
 
-        /// <summary>Bağlı oyuncu sayısı</summary>
         public int ConnectionCount => _connections.Count;
-
-        /// <summary>Bağlı oyuncu ID'leri</summary>
         public IReadOnlyList<string> ConnectedPlayerIds => _connections.Keys.ToList();
 
         /// <summary>
-        /// Yeni bir WebSocket bağlantısını kaydet
+        /// Yeni bağlantıyı kaydeder. Aynı oyuncu tekrar bağlanırsa eski bağlantı kapatılır.
         /// </summary>
         public void AddConnection(string playerId, System.Net.WebSockets.WebSocket socket)
         {
-            // Aynı oyuncu tekrar bağlanırsa eski bağlantıyı kapat
             if (_connections.TryRemove(playerId, out var oldSocket))
             {
                 if (oldSocket.State == WebSocketState.Open)
@@ -52,9 +41,6 @@ namespace UnoGame.Backend.WebSocket
             Console.WriteLine($"🔌 WebSocket: {playerId} bağlandı. Toplam: {ConnectionCount}");
         }
 
-        /// <summary>
-        /// Bağlantıyı kaldır
-        /// </summary>
         public void RemoveConnection(string playerId)
         {
             _connections.TryRemove(playerId, out _);
@@ -62,7 +48,7 @@ namespace UnoGame.Backend.WebSocket
         }
 
         /// <summary>
-        /// Belirli bir oyuncuya mesaj gönder
+        /// Belirli bir oyuncuya mesaj gönderir.
         /// </summary>
         public async Task SendToPlayerAsync(string playerId, string message)
         {
@@ -79,8 +65,7 @@ namespace UnoGame.Backend.WebSocket
         }
 
         /// <summary>
-        /// Tüm bağlı oyunculara mesaj gönder (broadcast)
-        /// Oyun eventleri bu yöntemle gönderilir
+        /// Tüm bağlı oyunculara mesaj gönderir.
         /// </summary>
         public async Task BroadcastAsync(string message)
         {
@@ -104,8 +89,7 @@ namespace UnoGame.Backend.WebSocket
         }
 
         /// <summary>
-        /// Belirli bir oyuncu dışındaki herkese mesaj gönder
-        /// Örnek: Kart çekme — sadece çeken oyuncu kartı görür, diğerleri "X kart çekti" görür
+        /// Belirtilen oyuncu dışındaki herkese mesaj gönderir.
         /// </summary>
         public async Task BroadcastExceptAsync(string excludePlayerId, string message)
         {
@@ -128,9 +112,6 @@ namespace UnoGame.Backend.WebSocket
             await Task.WhenAll(tasks);
         }
 
-        /// <summary>
-        /// Oyuncu bağlı mı kontrol et
-        /// </summary>
         public bool IsConnected(string playerId)
         {
             return _connections.TryGetValue(playerId, out var socket) && 
@@ -138,7 +119,7 @@ namespace UnoGame.Backend.WebSocket
         }
 
         /// <summary>
-        /// Kopuk bağlantıları temizle
+        /// Kopuk bağlantıları tespit edip temizler.
         /// </summary>
         public void CleanupDisconnected()
         {

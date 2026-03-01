@@ -11,18 +11,11 @@ using UnoGame.Backend.Protocol;
 namespace UnoGame.Backend.WebSocket
 {
     /// <summary>
-    /// WebSocket üzerinden gelen mesajları (client → server) işler
+    /// WebSocket üzerinden gelen client komutlarını (JSON-RPC 2.0) işleyen handler.
     /// 
     /// Desteklenen komutlar:
-    /// - game.play_card  → Kart at
-    /// - game.draw_card  → Kart çek (1 kart)
-    /// - game.pass_turn  → Çektikten sonra pas geç
-    /// - game.call_uno   → UNO! çağır
-    /// - game.get_hand   → Elindeki kartları al
-    /// - game.get_state  → Oyun durumunu al
-    /// 
-    /// Tüm mesajlar JSON-RPC 2.0 formatında:
-    /// {"jsonrpc":"2.0","method":"game.play_card","params":{...},"id":"1"}
+    /// game.play_card, game.draw_card, game.pass_turn,
+    /// game.call_uno, game.get_hand, game.get_state
     /// </summary>
     public class WebSocketHandler
     {
@@ -43,22 +36,17 @@ namespace UnoGame.Backend.WebSocket
         }
 
         /// <summary>
-        /// Bir oyuncunun WebSocket bağlantısını dinler ve gelen mesajları işler
-        /// Bağlantı kopana kadar döngüde bekler
+        /// Bağlantıyı kaydeder ve bağlantı kapanana kadar mesaj dinleme döngüsünü çalıştırır.
         /// </summary>
         public async Task HandleConnectionAsync(System.Net.WebSockets.WebSocket socket, string playerId)
         {
-            // Bağlantıyı kaydet
             _connectionManager.AddConnection(playerId, socket);
-
-            // Hoş geldin mesajı gönder
             await SendWelcomeMessage(playerId);
 
             var buffer = new byte[4096];
 
             try
             {
-                // Mesaj dinleme döngüsü
                 while (socket.State == WebSocketState.Open)
                 {
                     var result = await socket.ReceiveAsync(
@@ -104,7 +92,7 @@ namespace UnoGame.Backend.WebSocket
         }
 
         /// <summary>
-        /// Gelen JSON-RPC mesajını parse edip uygun aksiyonu çalıştırır
+        /// Gelen JSON-RPC mesajını parse edip ilgili handler'a yönlendirir.
         /// </summary>
         private async Task<string?> ProcessMessageAsync(string playerId, string rawMessage)
         {
@@ -139,10 +127,6 @@ namespace UnoGame.Backend.WebSocket
             }
         }
 
-        /// <summary>
-        /// game.play_card — Kart atma komutu
-        /// Params: {"card": {"color": "RED", "type": "NUMBER", "number": 7}, "chosen_color": "BLUE"}
-        /// </summary>
         private Task<string> HandlePlayCard(string playerId, JsonElement root, string id)
         {
             try
@@ -158,7 +142,6 @@ namespace UnoGame.Backend.WebSocket
 
                 var card = new UnoCard(color, type, number);
 
-                // Wild kart renk seçimi
                 UnoCard.CardColor? chosenColor = null;
                 if (paramsEl.TryGetProperty("chosen_color", out var chosenProp) && 
                     chosenProp.ValueKind != JsonValueKind.Null)
@@ -176,9 +159,6 @@ namespace UnoGame.Backend.WebSocket
             }
         }
 
-        /// <summary>
-        /// game.draw_card — Kart çekme komutu
-        /// </summary>
         private Task<string> HandleDrawCard(string playerId, string id)
         {
             try
@@ -201,9 +181,6 @@ namespace UnoGame.Backend.WebSocket
             }
         }
 
-        /// <summary>
-        /// game.pass_turn — Kart çektikten sonra pas geçme
-        /// </summary>
         private string HandlePassTurn(string playerId, string id)
         {
             try
@@ -217,9 +194,6 @@ namespace UnoGame.Backend.WebSocket
             }
         }
 
-        /// <summary>
-        /// game.call_uno — UNO! çağırma
-        /// </summary>
         private string HandleCallUno(string playerId, string id)
         {
             try
@@ -234,8 +208,7 @@ namespace UnoGame.Backend.WebSocket
         }
 
         /// <summary>
-        /// game.get_hand — Oyuncunun elindeki kartlarını döndürür
-        /// GÜVENLİK: Sadece isteyen oyuncunun kartları döner
+        /// Oyuncunun kendi kartlarını döndürür. Güvenlik: sadece isteyen oyuncunun kartları gönderilir.
         /// </summary>
         private string HandleGetHand(string playerId, string id)
         {
@@ -269,9 +242,6 @@ namespace UnoGame.Backend.WebSocket
             });
         }
 
-        /// <summary>
-        /// game.get_state — Oyun durumunu döndürür
-        /// </summary>
         private string HandleGetState(string id)
         {
             var stateJson = _game.GetStateJson();
@@ -285,7 +255,6 @@ namespace UnoGame.Backend.WebSocket
 
         private async Task SendWelcomeMessage(string playerId)
         {
-            // Ortadaki kartı CardDto formatında hazırla
             var lastCard = _game.LastPlayedCard;
             object? lastCardDto = lastCard != null ? new
             {
@@ -342,7 +311,6 @@ namespace UnoGame.Backend.WebSocket
 
         private UnoCard.CardColor ParseColor(string color)
         {
-            // Turkish locale fix: "WİLD" → "WILD"
             var normalized = color.Replace("İ", "I").Replace("ı", "i").ToUpperInvariant();
             return normalized switch
             {
@@ -357,7 +325,6 @@ namespace UnoGame.Backend.WebSocket
 
         private UnoCard.CardType ParseCardType(string type)
         {
-            // Turkish locale fix
             var normalized = type.Replace("İ", "I").Replace("ı", "i").ToUpperInvariant();
             return normalized switch
             {

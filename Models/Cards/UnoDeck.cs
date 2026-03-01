@@ -5,29 +5,16 @@ using System.Linq;
 namespace UnoGame.Models.Cards
 {
     /// <summary>
-    /// UNO kart destesi (108 kart)
-    /// 
-    /// Standart UNO destesi:
-    /// - 4 renk (Red, Blue, Green, Yellow) x her renk:
-    ///   - 1 adet 0 numaralı kart
-    ///   - 2 adet 1-9 numaralı kartlar (toplam 18)
-    ///   - 2 adet Skip kartı
-    ///   - 2 adet Reverse kartı
-    ///   - 2 adet DrawTwo kartı
-    /// - 4 adet Wild (Joker) kartı
-    /// - 4 adet WildDrawFour kartı
-    /// Toplam: (1 + 18 + 2 + 2 + 2) x 4 + 4 + 4 = 108 kart
+    /// Standart 108 kartlık UNO destesini yöneten sınıf.
+    /// Çekme destesi ve atılmış kartlar yığınını tutar.
     /// </summary>
     public class UnoDeck
     {
-        private readonly List<UnoCard> _drawPile;    // Çekme destesi
-        private readonly List<UnoCard> _discardPile;  // Atılmış kartlar
+        private readonly List<UnoCard> _drawPile;
+        private readonly List<UnoCard> _discardPile;
         private readonly Random _random;
 
-        /// <summary>Çekme destesindeki kart sayısı</summary>
         public int DrawPileCount => _drawPile.Count;
-
-        /// <summary>Atılmış kart sayısı</summary>
         public int DiscardPileCount => _discardPile.Count;
 
         public UnoDeck()
@@ -40,13 +27,13 @@ namespace UnoGame.Models.Cards
         }
 
         /// <summary>
-        /// Standart 108 kartlık UNO destesini oluşturur
+        /// 108 kartlık standart UNO destesini oluşturur.
+        /// 4 renk × (1×0 + 2×1-9 + 2×Skip + 2×Reverse + 2×DrawTwo) + 4×Wild + 4×WildDrawFour
         /// </summary>
         private void BuildDeck()
         {
             _drawPile.Clear();
 
-            // Her renk için kartları ekle
             var colors = new[] 
             { 
                 UnoCard.CardColor.Red, 
@@ -57,17 +44,14 @@ namespace UnoGame.Models.Cards
 
             foreach (var color in colors)
             {
-                // 0 numara — her renkten 1 adet
                 _drawPile.Add(new UnoCard(color, UnoCard.CardType.Number, 0));
 
-                // 1-9 numaraları — her renkten 2'şer adet
                 for (int number = 1; number <= 9; number++)
                 {
                     _drawPile.Add(new UnoCard(color, UnoCard.CardType.Number, number));
                     _drawPile.Add(new UnoCard(color, UnoCard.CardType.Number, number));
                 }
 
-                // Özel kartlar — her renkten 2'şer adet
                 for (int i = 0; i < 2; i++)
                 {
                     _drawPile.Add(new UnoCard(color, UnoCard.CardType.Skip));
@@ -76,7 +60,6 @@ namespace UnoGame.Models.Cards
                 }
             }
 
-            // Wild kartlar — 4 adet
             for (int i = 0; i < 4; i++)
             {
                 _drawPile.Add(new UnoCard(UnoCard.CardColor.Wild, UnoCard.CardType.Wild));
@@ -85,7 +68,7 @@ namespace UnoGame.Models.Cards
         }
 
         /// <summary>
-        /// Desteyi karıştırır (Fisher-Yates shuffle)
+        /// Fisher-Yates algoritmasıyla desteyi karıştırır.
         /// </summary>
         public void Shuffle()
         {
@@ -97,8 +80,8 @@ namespace UnoGame.Models.Cards
         }
 
         /// <summary>
-        /// Desteden belirtilen sayıda kart çeker
-        /// Deste biterse, atılmış kartlardan yeniden oluşturur
+        /// Desteden belirtilen sayıda kart çeker.
+        /// Deste biterse atılmış kartlar yeniden karıştırılır.
         /// </summary>
         public List<UnoCard> Draw(int count = 1)
         {
@@ -106,13 +89,11 @@ namespace UnoGame.Models.Cards
 
             for (int i = 0; i < count; i++)
             {
-                // Deste bittiyse, atılmış kartlardan yeniden oluştur
                 if (_drawPile.Count == 0)
                 {
                     ReshuffleDiscardPile();
                 }
 
-                // Hâlâ kart yoksa (çok nadir durum), dur
                 if (_drawPile.Count == 0)
                 {
                     Console.WriteLine("⚠️ Destede ve atılmış kartlarda kart kalmadı!");
@@ -128,7 +109,7 @@ namespace UnoGame.Models.Cards
         }
 
         /// <summary>
-        /// Kartı atılmış kartlar yığınına ekler
+        /// Kartı atılmış kartlar yığınına ekler.
         /// </summary>
         public void Discard(UnoCard card)
         {
@@ -136,8 +117,8 @@ namespace UnoGame.Models.Cards
         }
 
         /// <summary>
-        /// Oyun başlangıcı için geçerli bir ilk kart çeker
-        /// (Wild veya özel kart çıkarsa tekrar çeker)
+        /// Oyun başlangıcı için geçerli bir ilk kart çeker.
+        /// Wild veya özel kart çıkarsa geçerli bir sayı kartı bulana kadar tekrar çeker.
         /// </summary>
         public UnoCard DrawInitialCard()
         {
@@ -149,32 +130,28 @@ namespace UnoGame.Models.Cards
 
                 var card = cards[0];
 
-                // İlk kart normal bir sayı kartı olmalı
                 if (card.Type == UnoCard.CardType.Number)
                 {
                     Discard(card);
                     return card;
                 }
 
-                // Geçersiz ilk kart — tekrar desteye koy ve karıştır
                 _drawPile.Add(card);
                 Shuffle();
             }
         }
 
         /// <summary>
-        /// Atılmış kartları çekme destesine geri koyar ve karıştırır
-        /// En üstteki atılmış kartı korur
+        /// Atılmış kartları çekme destesine geri koyar ve karıştırır.
+        /// En üstteki kart korunur.
         /// </summary>
         private void ReshuffleDiscardPile()
         {
             if (_discardPile.Count <= 1) return;
 
-            // En son atılan kartı koru
             var topCard = _discardPile[_discardPile.Count - 1];
             _discardPile.RemoveAt(_discardPile.Count - 1);
 
-            // Geri kalanları çekme destesine aktar
             _drawPile.AddRange(_discardPile);
             _discardPile.Clear();
             _discardPile.Add(topCard);

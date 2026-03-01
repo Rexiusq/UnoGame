@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace UnoGame.Backend.Protocol
 {
     /// <summary>
-    /// JSON-RPC 2.0 Request formatı
+    /// JSON-RPC 2.0 Request formatı.
     /// </summary>
     public class JsonRpcRequest<T>
     {
@@ -21,7 +21,7 @@ namespace UnoGame.Backend.Protocol
     }
 
     /// <summary>
-    /// JSON-RPC 2.0 Response formatı
+    /// JSON-RPC 2.0 Response formatı.
     /// </summary>
     public class JsonRpcResponse<T>
     {
@@ -38,9 +38,6 @@ namespace UnoGame.Backend.Protocol
         public string Id { get; set; } = "";
     }
 
-    /// <summary>
-    /// JSON-RPC Error object
-    /// </summary>
     public class JsonRpcError
     {
         [JsonPropertyName("code")]

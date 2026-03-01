@@ -14,12 +14,8 @@ using System.Collections.Generic;
 namespace UnoGame.Backend.Services
 {
     /// <summary>
-    /// JSON-RPC formatında event'leri backend'e gönderen servis
-    /// IAsyncGameEventListener implement eder — oyun eventlerini dinler
-    /// 
-    /// Fix #7: FirstPlayerId TurnManager'dan alınır
-    /// Fix #8: ConvertGameState TODO'ları çözüldü
-    /// Fix #9: PreviousPlayerId doldurulur
+    /// Oyun event'lerini JSON-RPC formatında konsola loglayan backend servis.
+    /// Gerçek backend entegrasyonunda bu sınıf HTTP/gRPC ile dış servislere gönderim yapabilir.
     /// </summary>
     public class JsonRpcBackendService : IAsyncGameEventListener
     {
@@ -75,7 +71,6 @@ namespace UnoGame.Backend.Services
 
         private async Task SendGameStartedAsync(UnoGameStartedEvent evt)
         {
-            // Fix #7: FirstPlayerId'yi TurnManager'dan al
             string firstPlayerId = _turnManager?.CurrentPlayer.Id ?? evt.PlayerIds.First();
 
             var @params = new GameStartedParams
@@ -142,7 +137,6 @@ namespace UnoGame.Backend.Services
 
         private async Task SendTurnChangedAsync(TurnChangedEvent evt)
         {
-            // Fix #9: PreviousPlayerId — TurnManager'dan al
             var turnMgr = _turnManager as TurnManager;
             string previousPlayerId = turnMgr?.PreviousPlayer?.Id ?? "";
 
@@ -191,7 +185,7 @@ namespace UnoGame.Backend.Services
 
         private async Task SendToBackendAsync<T>(JsonRpcRequest<T> request)
         {
-            await Task.Delay(50); // Network simülasyonu
+            await Task.Delay(50);
 
             var json = JsonSerializer.Serialize(request, new JsonSerializerOptions 
             { 
@@ -203,7 +197,6 @@ namespace UnoGame.Backend.Services
             Console.WriteLine(json);
         }
 
-        // Helper: UnoCard → CardDto
         private CardDto ConvertCard(UnoGame.Models.Cards.UnoCard card)
         {
             return new CardDto
@@ -228,7 +221,6 @@ namespace UnoGame.Backend.Services
             };
         }
 
-        // Helper: Players → PlayerStateDto[]
         private List<PlayerStateDto> ConvertPlayers()
         {
             return _players.Select(p => new PlayerStateDto
@@ -242,7 +234,6 @@ namespace UnoGame.Backend.Services
             }).ToList();
         }
 
-        // Helper: Full GameState — Fix #8: TODO'lar çözüldü
         private UnoGameStateDto ConvertGameState()
         {
             return new UnoGameStateDto

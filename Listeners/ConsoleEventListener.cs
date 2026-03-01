@@ -5,6 +5,9 @@ using System.Text.Json;
 
 namespace UnoGame.Listeners
 {
+    /// <summary>
+    /// Oyun event'lerini konsola JSON formatında yazdıran debug listener.
+    /// </summary>
     public class ConsoleEventListener : IGameEventListener
     {
         public void OnGameEvent(IGameAction action)

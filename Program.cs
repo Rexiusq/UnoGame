@@ -6,50 +6,38 @@ using UnoGame.Backend.Services;
 using UnoGame.Backend.WebSocket;
 using System.Net.WebSockets;
 
-// ═══════════════════════════════════════════
-//  UNO OYUNU - WebSocket Sunucusu
-// ═══════════════════════════════════════════
-
 var builder = WebApplication.CreateBuilder(args);
 
-// Kestrel'i 5000 portunda çalıştır
 builder.WebHost.UseUrls("http://localhost:5000");
 
 var app = builder.Build();
 
-// WebSocket middleware'ini etkinleştir
+// WebSocket middleware
 app.UseWebSockets(new WebSocketOptions
 {
-    KeepAliveInterval = TimeSpan.FromSeconds(30) // Her 30 saniyede ping gönder
+    KeepAliveInterval = TimeSpan.FromSeconds(30)
 });
 
-// Statik dosyalar için (test HTML sayfası)
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
-// ─────────────────────────────────────────
-//  OYUN KURULUMU
-// ─────────────────────────────────────────
+// ─── Oyun Kurulumu ───
 
 Console.WriteLine("═══════════════════════════════════════════");
 Console.WriteLine("     UNO OYUNU - WebSocket Sunucusu");
 Console.WriteLine("═══════════════════════════════════════════\n");
 
-// Oyunu oluştur
 var game = new UnoGame.Core.UnoGame("game-123");
 
-// Oyuncuları ekle (şimdilik sabit — ileride WebSocket ile dinamik olacak)
 game.AddPlayer(new Player("p1", "Ahmet"));
 game.AddPlayer(new Player("p2", "Mehmet"));
 game.AddPlayer(new Player("p3", "Ayşe"));
 
 Console.WriteLine("✅ 3 oyuncu eklendi\n");
 
-// WebSocket bileşenleri
 var connectionManager = new WebSocketConnectionManager();
 WebSocketHandler? wsHandler = null;
 
-// Oyunu başlat  
 game.StartGame();
 
 // WebSocket Event Listener — oyun eventlerini broadcast eder
@@ -61,7 +49,7 @@ var wsEventListener = new WebSocketEventListener(
 );
 game.AddEventListenerAsync(wsEventListener);
 
-// Konsol çıktısı için JSON-RPC Backend Service (opsiyonel)
+// JSON-RPC Backend Service — event loglaması
 var backendService = new JsonRpcBackendService(
     "game-123",
     (UnoGameState)game.State,
@@ -70,19 +58,15 @@ var backendService = new JsonRpcBackendService(
 );
 game.AddEventListenerAsync(backendService);
 
-// WebSocket Handler — client komutlarını işleyecek
 wsHandler = new WebSocketHandler(game, connectionManager);
 
 Console.WriteLine("✅ WebSocket Event Listener aktif!");
 Console.WriteLine("✅ JSON-RPC Backend Service aktif!\n");
 
-// ─────────────────────────────────────────
-//  WEBSOCKET ENDPOINT
-// ─────────────────────────────────────────
+// ─── WebSocket Endpoint ───
 
 app.Map("/ws", async (HttpContext context) =>
 {
-    // WebSocket isteği mi kontrol et
     if (!context.WebSockets.IsWebSocketRequest)
     {
         context.Response.StatusCode = 400;
@@ -90,7 +74,6 @@ app.Map("/ws", async (HttpContext context) =>
         return;
     }
 
-    // PlayerId'yi query string'den al: /ws?playerId=p1
     var playerId = context.Request.Query["playerId"].ToString();
     
     if (string.IsNullOrEmpty(playerId))
@@ -102,18 +85,12 @@ app.Map("/ws", async (HttpContext context) =>
 
     Console.WriteLine($"\n WebSocket bağlantı isteği: {playerId}");
 
-    // WebSocket bağlantısını kabul et
     var socket = await context.WebSockets.AcceptWebSocketAsync();
-
-    // Handler'a bağlantıyı ver — bağlantı kapanana kadar bekler
     await wsHandler.HandleConnectionAsync(socket, playerId);
 });
 
-// ─────────────────────────────────────────
-//  API ENDPOINTS (REST)
-// ─────────────────────────────────────────
+// ─── REST API Endpoints ───
 
-// Basit durum kontrolü
 app.MapGet("/api/status", () => new
 {
     status = "running",
@@ -122,15 +99,12 @@ app.MapGet("/api/status", () => new
     connection_count = connectionManager.ConnectionCount
 });
 
-// Oyun durumu
 app.MapGet("/api/state", () =>
 {
     return Results.Content(game.GetStateJson(), "application/json");
 });
 
-// ─────────────────────────────────────────
-//  SUNUCUYU BAŞLAT
-// ─────────────────────────────────────────
+// ─── Sunucuyu Başlat ───
 
 Console.WriteLine("═══════════════════════════════════════════");
 Console.WriteLine("   Sunucu başlatiliyor...");

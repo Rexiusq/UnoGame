@@ -1,47 +1,38 @@
 namespace UnoGame.Models.Cards
 {
     /// <summary>
-    /// UNO kartını temsil eden sınıf
-    /// SOLID Prensibi: Single Responsibility - Sadece kart verisi tutar
+    /// UNO kartını temsil eden model sınıfı.
     /// </summary>
     public class UnoCard
     {
-        // Kart renkleri - Wild (Joker) dahil
         public enum CardColor 
         { 
-            Red,      // Kırmızı
-            Blue,     // Mavi
-            Green,    // Yeşil
-            Yellow,   // Sarı
-            Wild      // Joker (renksiz)
+            Red,
+            Blue,
+            Green,
+            Yellow,
+            Wild
         }
 
-        // Kart tipleri - Özel kartlar dahil
         public enum CardType 
         { 
-            Number,         // Sayı kartı (0-9)
-            Skip,           // Sıra atlama
-            Reverse,        // Yön değiştirme (DÜZELTME: "Reverse" doğru yazıldı)
-            DrawTwo,        // +2 kart çektirme
-            Wild,           // Joker
-            WildDrawFour    // Joker +4
+            Number,
+            Skip,
+            Reverse,
+            DrawTwo,
+            Wild,
+            WildDrawFour
         }
 
-        // Properties (özellikleri)
         public CardColor Color { get; set; }
         public CardType Type { get; set; }
-        public int? Number { get; set; }  // Sadece Number tipinde kullanılır (0-9)
+        public int? Number { get; set; }
 
         /// <summary>
-        /// Wild kart atıldığında seçilen renk
-        /// Bir sonraki oyuncu bu renge uygun kart atmalı
+        /// Wild kart atıldığında oyuncunun seçtiği renk.
         /// </summary>
         public CardColor? ChosenColor { get; set; }
-        
 
-        /// <summary>
-        /// Constructor - Kart oluştururken çağrılır
-        /// </summary>
         public UnoCard(CardColor color, CardType type, int? number = null)
         {
             Color = color;
@@ -49,10 +40,6 @@ namespace UnoGame.Models.Cards
             Number = number;
         }
 
-        /// <summary>
-        /// Kartın okunabilir halini döndürür
-        /// Örnek: "Red 5" veya "Blue Skip"
-        /// </summary>
         public override string ToString()
         {
             if (Type == CardType.Number && Number.HasValue)

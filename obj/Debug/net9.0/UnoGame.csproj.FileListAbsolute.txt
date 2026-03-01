@@ -28,3 +28,4 @@ C:\Users\Eren\OneDrive\Masaüstü\UnoGame\obj\Debug\net9.0\staticwebassets.build
 C:\Users\Eren\OneDrive\Masaüstü\UnoGame\obj\Debug\net9.0\staticwebassets.development.json
 C:\Users\Eren\OneDrive\Masaüstü\UnoGame\obj\Debug\net9.0\staticwebassets.build.endpoints.json
 C:\Users\Eren\OneDrive\Masaüstü\UnoGame\obj\Debug\net9.0\compressed\p7wrn7yt80-0nb1uvum6o.gz
+C:\Users\Eren\OneDrive\Masaüstü\UnoGame\obj\Debug\net9.0\UnoGame.sourcelink.json

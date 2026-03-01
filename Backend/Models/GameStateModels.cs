@@ -4,15 +4,16 @@ using System.Text.Json.Serialization;
 
 namespace UnoGame.Backend.Models
 {
-
-    /// UnoGameState'den türetilmiş, backend'e gönderilecek tam oyun durumu
+    /// <summary>
+    /// Oyun durumunun JSON serializasyon modeli.
+    /// </summary>
     public class UnoGameStateDto
     {
         [JsonPropertyName("game_id")]
         public string GameId { get; set; } = "";
 
         [JsonPropertyName("game_status")]
-        public string GameStatus { get; set; } = ""; // WAITING, IN_PROGRESS, COMPLETED, CANCELLED
+        public string GameStatus { get; set; } = "";
 
         [JsonPropertyName("current_round")]
         public int CurrentRound { get; set; }
@@ -42,22 +43,24 @@ namespace UnoGame.Backend.Models
         public DateTime UpdatedAt { get; set; }
     }
 
-
-    /// Kart bilgisi - UnoCard'dan türetilmiş
+    /// <summary>
+    /// Kart bilgisi transfer nesnesi.
+    /// </summary>
     public class CardDto
     {
         [JsonPropertyName("color")]
-        public string Color { get; set; } = ""; // RED, BLUE, GREEN, YELLOW, WILD
+        public string Color { get; set; } = "";
 
         [JsonPropertyName("type")]
-        public string Type { get; set; } = ""; // NUMBER, SKIP, REVERSE, DRAW_TWO, WILD, WILD_DRAW_FOUR
+        public string Type { get; set; } = "";
 
         [JsonPropertyName("number")]
-        public int? Number { get; set; } // 0-9 veya null
+        public int? Number { get; set; }
     }
 
-
-    /// Oyuncu durumu - Player + game-specific bilgiler
+    /// <summary>
+    /// Oyuncu durumu transfer nesnesi.
+    /// </summary>
     public class PlayerStateDto
     {
         [JsonPropertyName("player_id")]
@@ -73,7 +76,7 @@ namespace UnoGame.Backend.Models
         public int Score { get; set; }
 
         [JsonPropertyName("status")]
-        public string Status { get; set; } = ""; // ACTIVE, WAITING, DISCONNECTED, ELIMINATED, WINNER
+        public string Status { get; set; } = "";
 
         [JsonPropertyName("joined_at")]
         public DateTime JoinedAt { get; set; }

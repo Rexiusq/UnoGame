@@ -4,8 +4,9 @@ using System.Text.Json.Serialization;
 
 namespace UnoGame.Backend.Models
 {
-
-    /// Oyun başladığında gönderilir
+    /// <summary>
+    /// Oyun başladığında broadcast edilen parametreler.
+    /// </summary>
     public class GameStartedParams
     {
         [JsonPropertyName("game_id")]
@@ -27,8 +28,9 @@ namespace UnoGame.Backend.Models
         public DateTime Timestamp { get; set; }
     }
 
-
-    /// Kart atıldığında gönderilir
+    /// <summary>
+    /// Kart atıldığında broadcast edilen parametreler.
+    /// </summary>
     public class CardPlayedParams
     {
         [JsonPropertyName("game_id")]
@@ -44,7 +46,7 @@ namespace UnoGame.Backend.Models
         public int RemainingCards { get; set; }
 
         [JsonPropertyName("is_uno")]
-        public bool IsUno { get; set; } // 1 kart kaldı mı?
+        public bool IsUno { get; set; }
 
         [JsonPropertyName("game_state")]
         public UnoGameStateDto GameState { get; set; } = new();
@@ -53,8 +55,9 @@ namespace UnoGame.Backend.Models
         public DateTime Timestamp { get; set; }
     }
 
-
-    /// Kart çekildiğinde gönderilir
+    /// <summary>
+    /// Kart çekildiğinde broadcast edilen parametreler.
+    /// </summary>
     public class CardDrawnParams
     {
         [JsonPropertyName("game_id")]
@@ -70,14 +73,15 @@ namespace UnoGame.Backend.Models
         public int TotalCards { get; set; }
 
         [JsonPropertyName("reason")]
-        public string Reason { get; set; } = ""; // VOLUNTARY, DRAW_PENALTY, NO_PLAYABLE_CARD
+        public string Reason { get; set; } = "";
 
         [JsonPropertyName("timestamp")]
         public DateTime Timestamp { get; set; }
     }
 
-
-    /// Tur değiştiğinde gönderilir
+    /// <summary>
+    /// Tur değiştiğinde broadcast edilen parametreler.
+    /// </summary>
     public class TurnChangedParams
     {
         [JsonPropertyName("game_id")]
@@ -99,8 +103,9 @@ namespace UnoGame.Backend.Models
         public DateTime Timestamp { get; set; }
     }
 
-
-    /// Oyun bittiğinde gönderilir
+    /// <summary>
+    /// Oyun bittiğinde broadcast edilen parametreler.
+    /// </summary>
     public class GameEndedParams
     {
         [JsonPropertyName("game_id")]
@@ -125,8 +130,9 @@ namespace UnoGame.Backend.Models
         public DateTime Timestamp { get; set; }
     }
 
-
-    /// Oyuncu bağlantısı koptuğunda
+    /// <summary>
+    /// Oyuncu bağlantısı koptuğunda gönderilen parametreler.
+    /// </summary>
     public class PlayerDisconnectedParams
     {
         [JsonPropertyName("game_id")]
@@ -136,7 +142,7 @@ namespace UnoGame.Backend.Models
         public string PlayerId { get; set; } = "";
 
         [JsonPropertyName("reason")]
-        public string Reason { get; set; } = ""; // TIMEOUT, MANUAL_EXIT, CONNECTION_LOSS
+        public string Reason { get; set; } = "";
 
         [JsonPropertyName("timestamp")]
         public DateTime Timestamp { get; set; }
