@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 UNO WebSocket Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f0f23;
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #ff5555;
+            font-size: 2em;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255, 85, 85, 0.3);
+        }
+
+        .top-bar {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #1a1a2e;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+
+        .top-bar select,
+        .top-bar button {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .top-bar select {
+            background: #16213e;
+            color: #fff;
+            border: 1px solid #444;
+        }
+
+        .btn-connect {
+            background: #00c853;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .btn-connect:hover {
+            background: #00e676;
+        }
+
+        .btn-disconnect {
+            background: #ff1744;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .status-badge {
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            margin-left: auto;
+        }
+
+        .status-connected {
+            background: #1b5e20;
+            color: #69f0ae;
+        }
+
+        .status-disconnected {
+            background: #b71c1c;
+            color: #ff8a80;
+        }
+
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .panel {
+            background: #1a1a2e;
+            border-radius: 10px;
+            border: 1px solid #333;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #16213e;
+            padding: 12px 16px;
+            font-weight: bold;
+            font-size: 14px;
+            border-bottom: 1px solid #333;
+        }
+
+        .panel-body {
+            padding: 16px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .action-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .action-btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: transform 0.1s;
+        }
+
+        .action-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-hand {
+            background: #1565c0;
+            color: #fff;
+        }
+
+        .btn-draw {
+            background: #e65100;
+            color: #fff;
+        }
+
+        .btn-state {
+            background: #6a1b9a;
+            color: #fff;
+        }
+
+        .btn-uno {
+            background: #d32f2f;
+            color: #fff;
+            font-size: 15px;
+        }
+
+        .btn-pass {
+            background: #546e7a;
+            color: #fff;
+        }
+
+        .status-bar {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .status-bar.warning {
+            background: #4a1c1c;
+            border: 1px solid #ef5350;
+            color: #ff8a80;
+        }
+
+        .status-bar.info {
+            background: #1a2a1a;
+            border: 1px solid #4caf50;
+            color: #69f0ae;
+        }
+
+        .status-bar.uno {
+            background: #4a1c00;
+            border: 1px solid #ff9800;
+            color: #ffcc80;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: 0.6
+            }
+        }
+
+        .card-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .card {
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s;
+            min-width: 70px;
+            text-align: center;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+        }
+
+        .card.playable {
+            border-color: #69f0ae;
+            cursor: pointer;
+        }
+
+        .card.not-playable {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .card-RED {
+            background: #d32f2f;
+            color: #fff;
+        }
+
+        .card-BLUE {
+            background: #1565c0;
+            color: #fff;
+        }
+
+        .card-GREEN {
+            background: #2e7d32;
+            color: #fff;
+        }
+
+        .card-YELLOW {
+            background: #f9a825;
+            color: #000;
+        }
+
+        .card-WILD {
+            background: linear-gradient(135deg, #d32f2f, #1565c0, #2e7d32, #f9a825);
+            color: #fff;
+        }
+
+        .custom-cmd {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .custom-cmd input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #444;
+            background: #0f0f23;
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+        }
+
+        .btn-send {
+            background: #00bcd4;
+            color: #fff;
+        }
+
+        .log-entry {
+            padding: 8px 12px;
+            margin-bottom: 4px;
+            border-radius: 6px;
+            font-family: 'Consolas', monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+
+        .log-sent {
+            background: #1b2a1b;
+            border-left: 3px solid #4caf50;
+        }
+
+        .log-received {
+            background: #1b1b2a;
+            border-left: 3px solid #42a5f5;
+        }
+
+        .log-event {
+            background: #2a1b2a;
+            border-left: 3px solid #ab47bc;
+        }
+
+        .log-error {
+            background: #2a1b1b;
+            border-left: 3px solid #ef5350;
+        }
+
+        .log-info {
+            background: #1b2a2a;
+            border-left: 3px solid #26c6da;
+        }
+
+        .color-picker {
+            display: none;
+            margin-top: 10px;
+            padding: 12px;
+            background: #16213e;
+            border-radius: 8px;
+        }
+
+        .color-picker.visible {
+            display: block;
+        }
+
+        .color-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid #fff;
+            margin: 0 6px;
+            cursor: pointer;
+        }
+
+        .last-card-display {
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: #16213e;
+            border-radius: 8px;
+        }
+
+        .last-card-display .card {
+            display: inline-block;
+            font-size: 16px;
+            padding: 12px 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🎮 UNO WebSocket Test</h1>
+
+        <!-- Bağlantı Barı -->
+        <div class="top-bar">
+            <select id="playerSelect">
+                <option value="p1">p1 — Ahmet</option>
+                <option value="p2">p2 — Mehmet</option>
+                <option value="p3">p3 — Ayşe</option>
+            </select>
+            <button class="action-btn btn-connect" onclick="connect()">🔌 Bağlan</button>
+            <button class="action-btn btn-disconnect" onclick="disconnect()" disabled id="btnDisconnect">❌ Kes</button>
+            <span id="statusBadge" class="status-badge status-disconnected">⚫ Bağlı Değil</span>
+        </div>
+
+        <div class="panels">
+            <!-- Sol: Aksiyonlar & Kartlar -->
+            <div class="panel">
+                <div class="panel-header">🃏 Oyun Aksiyonları</div>
+                <div class="panel-body">
+                    <div class="action-buttons">
+                        <button class="action-btn btn-hand" onclick="getHand()" id="btnHand" disabled>Elimi Gor</button>
+                        <button class="action-btn btn-draw" onclick="drawCard()" id="btnDraw" disabled>Kart Cek</button>
+                        <button class="action-btn btn-pass" onclick="passTurn()" id="btnPass" disabled>Pas Gec</button>
+                        <button class="action-btn btn-uno" onclick="callUno()" id="btnUno" disabled>UNO!</button>
+                        <button class="action-btn btn-state" onclick="getState()" id="btnState" disabled>Oyun
+                            Durumu</button>
+                    </div>
+                    <div id="statusBar"></div>
+
+                    <div class="last-card-display" id="lastCardDisplay" style="display:none">
+                        <div style="font-size:12px; color:#888; margin-bottom:6px">Ortadaki Kart:</div>
+                        <div id="lastCard"></div>
+                    </div>
+
+                    <div id="handSection" style="display:none">
+                        <div style="font-size:13px; color:#888; margin-bottom:6px">Elindeki Kartlar (yeşil çerçevelileri
+                            atabilirsin):</div>
+                        <div class="card-grid" id="cardsGrid"></div>
+                    </div>
+
+                    <div class="color-picker" id="colorPicker">
+                        <div style="margin-bottom:10px; font-size:14px; font-weight:bold; color:#fff">🎨 Renk Seç:</div>
+                        <div style="display:flex; gap:16px; justify-content:center">
+                            <div style="text-align:center">
+                                <button class="color-btn" style="background:#d32f2f; width:50px; height:50px"
+                                    onclick="playWild('RED')"></button>
+                                <div style="font-size:11px; color:#ef5350; margin-top:4px">Kırmızı</div>
+                            </div>
+                            <div style="text-align:center">
+                                <button class="color-btn" style="background:#1565c0; width:50px; height:50px"
+                                    onclick="playWild('BLUE')"></button>
+                                <div style="font-size:11px; color:#42a5f5; margin-top:4px">Mavi</div>
+                            </div>
+                            <div style="text-align:center">
+                                <button class="color-btn" style="background:#2e7d32; width:50px; height:50px"
+                                    onclick="playWild('GREEN')"></button>
+                                <div style="font-size:11px; color:#66bb6a; margin-top:4px">Yeşil</div>
+                            </div>
+                            <div style="text-align:center">
+                                <button class="color-btn" style="background:#f9a825; width:50px; height:50px"
+                                    onclick="playWild('YELLOW')"></button>
+                                <div style="font-size:11px; color:#ffee58; margin-top:4px">Sarı</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Custom Komut -->
+                    <div class="custom-cmd">
+                        <input type="text" id="customMsg"
+                            placeholder='JSON-RPC: {"jsonrpc":"2.0","method":"game.get_state","id":"1"}' />
+                        <button class="action-btn btn-send" onclick="sendCustom()">📤 Gönder</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sağ: Mesaj Logları -->
+            <div class="panel">
+                <div class="panel-header">
+                    📡 Mesaj Logları
+                    <button style="float:right;background:transparent;border:none;color:#888;cursor:pointer"
+                        onclick="clearLogs()">🗑️ Temizle</button>
+                </div>
+                <div class="panel-body" id="logPanel"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ws = null;
+        let selectedCard = null;
+
+        function connect() {
+            const playerId = document.getElementById('playerSelect').value;
+
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            }
+
+            ws = new WebSocket(`ws://localhost:5000/ws?playerId=${playerId}`);
+
+            ws.onopen = () => {
+                log('info', `✅ Bağlantı kuruldu! (${playerId})`);
+                setConnected(true);
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                if (data.method) {
+                    // Server event (push)
+                    log('event', `${data.method}: ${JSON.stringify(data.params, null, 2)}`);
+
+                    // Bağlantı karşılama — ortadaki kartı göster
+                    if (data.method === 'server.welcome' && data.params?.last_played_card) {
+                        showLastCard(data.params.last_played_card);
+                    }
+
+                    // Oyun başladı — ortadaki kartı göster
+                    if (data.method === 'game.started' && data.params?.initial_card) {
+                        showLastCard(data.params.initial_card);
+                    }
+
+                    // Kart atıldı — ortadaki kartı güncelle
+                    if (data.method === 'game.card_played' && data.params?.game_state?.last_played_card) {
+                        showLastCard(data.params.game_state.last_played_card);
+                    }
+
+                    // Oyun bitti eventi
+                    if (data.method === 'game.ended') {
+                        showGameOver(data.params?.winner_name || 'Bilinmiyor');
+                    }
+                } else if (data.result) {
+                    // Response to our request
+                    log('received', `Yanit: ${JSON.stringify(data.result, null, 2)}`);
+
+                    // Kartları göster
+                    if (data.result.cards) {
+                        showHand(data.result);
+                    }
+
+                    // Oyun bitti kontrolü
+                    if (data.result.game_finished) {
+                        showGameOver('');
+                    }
+                } else if (data.error) {
+                    log('error', `Hata: ${data.error.message}`);
+                }
+            };
+
+            ws.onclose = () => {
+                log('info', '🔌 Bağlantı kapatıldı');
+                setConnected(false);
+            };
+
+            ws.onerror = (err) => {
+                log('error', '❌ Bağlantı hatası!');
+                setConnected(false);
+            };
+        }
+
+        function disconnect() {
+            if (ws) ws.close();
+        }
+
+        function setConnected(connected) {
+            const badge = document.getElementById('statusBadge');
+            const btnDisconnect = document.getElementById('btnDisconnect');
+            const actionBtns = ['btnHand', 'btnDraw', 'btnState', 'btnPass', 'btnUno'];
+
+            if (connected) {
+                badge.textContent = 'Bagli';
+                badge.className = 'status-badge status-connected';
+                btnDisconnect.disabled = false;
+                actionBtns.forEach(id => document.getElementById(id).disabled = false);
+            } else {
+                badge.textContent = 'Bagli Degil';
+                badge.className = 'status-badge status-disconnected';
+                btnDisconnect.disabled = true;
+                actionBtns.forEach(id => document.getElementById(id).disabled = true);
+            }
+        }
+
+        function send(obj) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('error', '❌ Bağlı değil!');
+                return;
+            }
+            const msg = JSON.stringify(obj);
+            ws.send(msg);
+            log('sent', `📤 ${obj.method}: ${msg}`);
+        }
+
+        function getHand() {
+            send({ jsonrpc: "2.0", method: "game.get_hand", id: Date.now().toString() });
+        }
+
+        function drawCard() {
+            send({ jsonrpc: "2.0", method: "game.draw_card", id: Date.now().toString() });
+            setTimeout(getHand, 300);
+        }
+
+        function passTurn() {
+            send({ jsonrpc: "2.0", method: "game.pass_turn", id: Date.now().toString() });
+            setTimeout(getHand, 300);
+        }
+
+        function callUno() {
+            send({ jsonrpc: "2.0", method: "game.call_uno", id: Date.now().toString() });
+            setTimeout(getHand, 300);
+        }
+
+        function getState() {
+            send({ jsonrpc: "2.0", method: "game.get_state", id: Date.now().toString() });
+        }
+
+        function playCard(card) {
+            if (card.color === 'WILD') {
+                selectedCard = card;
+                document.getElementById('colorPicker').classList.add('visible');
+                return;
+            }
+
+            send({
+                jsonrpc: "2.0",
+                method: "game.play_card",
+                params: { card: card },
+                id: Date.now().toString()
+            });
+            // Kartı attıktan sonra eli güncelle
+            setTimeout(getHand, 300);
+        }
+
+        function playWild(chosenColor) {
+            if (!selectedCard) return;
+
+            send({
+                jsonrpc: "2.0",
+                method: "game.play_card",
+                params: { card: selectedCard, chosen_color: chosenColor },
+                id: Date.now().toString()
+            });
+
+            selectedCard = null;
+            document.getElementById('colorPicker').classList.remove('visible');
+            setTimeout(getHand, 300);
+        }
+
+        function showHand(data) {
+            document.getElementById('handSection').style.display = 'block';
+            const grid = document.getElementById('cardsGrid');
+            const statusBar = document.getElementById('statusBar');
+            grid.innerHTML = '';
+            statusBar.innerHTML = '';
+
+            // Durum bilgileri
+            if (data.draw_penalty > 0) {
+                statusBar.innerHTML += `<div class="status-bar warning">CEZA: +${data.draw_penalty} kart cekmelisin!</div>`;
+            }
+            if (data.has_drawn && data.can_play_drawn) {
+                statusBar.innerHTML += `<div class="status-bar info">Kart cektin. Atilabilir kart var! At veya Pas Gec.</div>`;
+            }
+            if (data.has_drawn && !data.can_play_drawn) {
+                statusBar.innerHTML += `<div class="status-bar warning">Kart cektin ama atilamaz. Sira gecti.</div>`;
+            }
+
+            if (data.current_turn) {
+                grid.innerHTML = '<div style="width:100%;color:#69f0ae;font-size:12px;margin-bottom:4px">Senin siran!</div>';
+            }
+
+            data.cards.forEach(card => {
+                const div = document.createElement('div');
+                const colorClass = card.color === 'WILD' ? 'WILD' : card.color;
+                const label = card.type === 'NUMBER' ? `${card.number}` : card.type.replace('_', ' ');
+
+                div.className = `card card-${colorClass} ${card.playable ? 'playable' : 'not-playable'}`;
+                div.textContent = `${card.color === 'WILD' ? '' : ''} ${label}`;
+                div.title = `${card.color} ${label}`;
+
+                if (card.playable) {
+                    div.onclick = () => playCard(card);
+                }
+
+                grid.appendChild(div);
+            });
+        }
+
+        function showLastCard(card) {
+            document.getElementById('lastCardDisplay').style.display = 'block';
+            const el = document.getElementById('lastCard');
+            const colorClass = card.color === 'WILD' ? 'WILD' : card.color;
+            const label = card.type === 'NUMBER' ? `${card.color} ${card.number}` : `${card.color} ${card.type}`;
+            el.innerHTML = `<div class="card card-${colorClass}">${label}</div>`;
+        }
+
+        function showGameOver(winnerName) {
+            const statusBar = document.getElementById('statusBar');
+            const msg = winnerName ? `OYUN BITTI! Kazanan: ${winnerName}` : 'OYUN BITTI!';
+            statusBar.innerHTML = `<div class="status-bar warning" style="font-size:16px;text-align:center;background:#1a4a1a;border-color:#4caf50;color:#69f0ae">${msg}</div>`;
+
+            // Tüm aksyon butonlarını kapat
+            ['btnHand', 'btnDraw', 'btnPass', 'btnUno', 'btnState'].forEach(id => {
+                document.getElementById(id).disabled = true;
+            });
+
+            log('info', msg);
+        }
+
+        function sendCustom() {
+            const input = document.getElementById('customMsg');
+            try {
+                const obj = JSON.parse(input.value);
+                send(obj);
+            } catch {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(input.value);
+                    log('sent', `📤 Raw: ${input.value}`);
+                }
+            }
+        }
+
+        function log(type, message) {
+            const panel = document.getElementById('logPanel');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+
+            const time = new Date().toLocaleTimeString('tr-TR');
+            entry.innerHTML = `<span style="color:#666">[${time}]</span> <pre style="display:inline;white-space:pre-wrap;margin:0">${message}</pre>`;
+
+            panel.insertBefore(entry, panel.firstChild);
+
+            // Max 100 log
+            while (panel.children.length > 100) {
+                panel.removeChild(panel.lastChild);
+            }
+        }
+
+        function clearLogs() {
+            document.getElementById('logPanel').innerHTML = '';
+        }
+
+        // Enter tuşu custom mesaj gönderir
+        document.getElementById('customMsg').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendCustom();
+        });
+    </script>
+</body>
+
+</html>
