@@ -100,7 +100,7 @@ Sistem, **GameCore** adlı genel amaçlı bir oyun çerçevesi (framework) üzer
 ### Adım 1: Projeyi Klonlayın
 
 ```bash
-git clone https://github.com/Rexiusq/UnoGame.git
+git clone https://github.com/Vibe-Social-App/UnoGame.git
 cd UnoGame
 ```
 
@@ -537,6 +537,628 @@ Bağlantı kurulduğunda sunucu otomatik olarak `server.welcome` mesajı gönder
 |----------|--------|----------|
 | `/api/status` | `GET` | Sunucu durumu, bağlı oyuncular |
 | `/api/state` | `GET` | Anlık oyun durumu (JSON) |
+
+---
+
+## 📋 Backend JSON Parametreleri (Tam Referans)
+
+Bu bölüm, backend'in gönderdiği ve aldığı **tüm JSON verilerini** detaylı şekilde listeler. Tüm mesajlar **JSON-RPC 2.0** formatındadır.
+
+---
+
+### 📨 Client → Server Komutları (Request)
+
+#### 1. `game.play_card` — Kart Atma
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.play_card",
+    "params": {
+        "card": {
+            "color": "RED",
+            "type": "NUMBER",
+            "number": 7
+        }
+    },
+    "id": "req-1"
+}
+```
+
+**Wild / WildDrawFour kart atarken:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.play_card",
+    "params": {
+        "card": {
+            "color": "WILD",
+            "type": "WILD",
+            "number": null
+        },
+        "chosen_color": "BLUE"
+    },
+    "id": "req-2"
+}
+```
+
+| Parametre | Tip | Zorunlu | Açıklama |
+|-----------|-----|---------|----------|
+| `params.card.color` | `string` | ✅ | `RED`, `BLUE`, `GREEN`, `YELLOW`, `WILD` |
+| `params.card.type` | `string` | ✅ | `NUMBER`, `SKIP`, `REVERSE`, `DRAW_TWO`, `WILD`, `WILD_DRAW_FOUR` |
+| `params.card.number` | `int?` | ❌ | `0-9` (sadece `NUMBER` tipi için, diğerleri `null`) |
+| `params.chosen_color` | `string?` | ❌ | Wild kartlar için seçilen renk: `RED`, `BLUE`, `GREEN`, `YELLOW` |
+
+**Başarılı Yanıt:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "success": true,
+        "message": "Kart atıldı: Red 7"
+    },
+    "id": "req-1"
+}
+```
+
+---
+
+#### 2. `game.draw_card` — Kart Çekme
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.draw_card",
+    "params": {},
+    "id": "req-3"
+}
+```
+
+**Başarılı Yanıt:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "success": true,
+        "message": "Kart cekildi",
+        "total_cards": 8,
+        "can_play_drawn": true,
+        "has_drawn": true
+    },
+    "id": "req-3"
+}
+```
+
+| Yanıt Alanı | Tip | Açıklama |
+|-------------|-----|----------|
+| `total_cards` | `int` | Çektikten sonra elde kalan toplam kart sayısı |
+| `can_play_drawn` | `bool` | Çekilen kart atılabilir mi? |
+| `has_drawn` | `bool` | Bu turda kart çekildi mi? |
+
+---
+
+#### 3. `game.pass_turn` — Pas Geçme
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.pass_turn",
+    "params": {},
+    "id": "req-4"
+}
+```
+
+**Başarılı Yanıt:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "success": true,
+        "message": "Pas gecildi, sira sonraki oyuncuda"
+    },
+    "id": "req-4"
+}
+```
+
+> ⚠️ Pas geçme sadece aynı turda kart çektikten sonra yapılabilir.
+
+---
+
+#### 4. `game.call_uno` — UNO Çağırma
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.call_uno",
+    "params": {},
+    "id": "req-5"
+}
+```
+
+**Başarılı Yanıt:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "success": true,
+        "message": "UNO!"
+    },
+    "id": "req-5"
+}
+```
+
+---
+
+#### 5. `game.get_hand` — Eldeki Kartları Alma
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.get_hand",
+    "params": {},
+    "id": "req-6"
+}
+```
+
+**Başarılı Yanıt:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "player_id": "p1",
+        "cards": [
+            {
+                "color": "RED",
+                "type": "NUMBER",
+                "number": 3,
+                "playable": true
+            },
+            {
+                "color": "BLUE",
+                "type": "SKIP",
+                "number": null,
+                "playable": false
+            },
+            {
+                "color": "WILD",
+                "type": "WILD",
+                "number": null,
+                "playable": true
+            }
+        ],
+        "card_count": 3,
+        "current_turn": true,
+        "has_drawn": false,
+        "can_play_drawn": false,
+        "draw_penalty": 0,
+        "game_finished": false
+    },
+    "id": "req-6"
+}
+```
+
+| Yanıt Alanı | Tip | Açıklama |
+|-------------|-----|----------|
+| `player_id` | `string` | İsteyen oyuncunun ID'si |
+| `cards` | `array` | Eldeki kartların listesi |
+| `cards[].color` | `string` | Kart rengi |
+| `cards[].type` | `string` | Kart tipi |
+| `cards[].number` | `int?` | Kart numarası (sadece NUMBER tipi) |
+| `cards[].playable` | `bool` | Bu kart şu an atılabilir mi? |
+| `card_count` | `int` | Toplam kart sayısı |
+| `current_turn` | `bool` | Sıra bu oyuncuda mı? |
+| `has_drawn` | `bool` | Bu turda zaten kart çekildi mi? |
+| `can_play_drawn` | `bool` | Çekilen kart oynanabilir mi? |
+| `draw_penalty` | `int` | Bekleyen çekme cezası |
+| `game_finished` | `bool` | Oyun bitti mi? |
+
+---
+
+#### 6. `game.get_state` — Oyun Durumu Alma
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.get_state",
+    "params": {},
+    "id": "req-7"
+}
+```
+
+**Başarılı Yanıt:**
+
+```json
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "state": {
+            "game_id": "game-123",
+            "game_status": "IN_PROGRESS",
+            "current_round": 1,
+            "current_turn_number": 5,
+            "current_player_id": "p2",
+            "is_clockwise": true,
+            "draw_penalty": 0,
+            "last_played_card": {
+                "color": "RED",
+                "type": "NUMBER",
+                "number": 7
+            },
+            "players": [
+                {
+                    "player_id": "p1",
+                    "player_name": "Ahmet",
+                    "card_count": 6,
+                    "score": 0,
+                    "status": "ACTIVE",
+                    "joined_at": "2026-03-04T17:50:00Z"
+                }
+            ],
+            "created_at": "2026-03-04T17:50:00Z",
+            "updated_at": "2026-03-04T17:55:30Z"
+        },
+        "current_player": "p2",
+        "connected_players": ["p1", "p2", "p3"]
+    },
+    "id": "req-7"
+}
+```
+
+---
+
+### 📡 Server → Client Broadcast Event'leri
+
+Bu mesajlar oyunda bir aksiyon gerçekleştiğinde **tüm bağlı client'lara** otomatik gönderilir.
+
+#### 1. `server.welcome` — Hoş Geldin
+
+Bağlantı kurulduğunda sadece bağlanan oyuncuya gönderilir.
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "server.welcome",
+    "params": {
+        "message": "Hoş geldin p1! UNO oyun sunucusuna bağlandın.",
+        "player_id": "p1",
+        "connected_players": ["p1", "p2"],
+        "last_played_card": {
+            "color": "RED",
+            "type": "NUMBER",
+            "number": 5
+        },
+        "current_player": "p1",
+        "draw_penalty": 0,
+        "game_finished": false
+    }
+}
+```
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `message` | `string` | Hoş geldin mesajı |
+| `player_id` | `string` | Bağlanan oyuncunun ID'si |
+| `connected_players` | `string[]` | Şu an bağlı olan oyuncu ID'leri |
+| `last_played_card` | `CardDto?` | Ortadaki son kart (oyun başlamadıysa `null`) |
+| `current_player` | `string` | Sırası gelen oyuncunun ID'si |
+| `draw_penalty` | `int` | Bekleyen çekme cezası |
+| `game_finished` | `bool` | Oyun bitti mi? |
+
+---
+
+#### 2. `game.started` — Oyun Başladı
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.started",
+    "params": {
+        "game_id": "game-123",
+        "game_type": "UNO",
+        "players": [
+            {
+                "player_id": "p1",
+                "player_name": "Ahmet",
+                "card_count": 7,
+                "score": 0,
+                "status": "ACTIVE",
+                "joined_at": "2026-03-04T17:50:00Z"
+            },
+            {
+                "player_id": "p2",
+                "player_name": "Mehmet",
+                "card_count": 7,
+                "score": 0,
+                "status": "ACTIVE",
+                "joined_at": "2026-03-04T17:50:00Z"
+            },
+            {
+                "player_id": "p3",
+                "player_name": "Ayşe",
+                "card_count": 7,
+                "score": 0,
+                "status": "ACTIVE",
+                "joined_at": "2026-03-04T17:50:00Z"
+            }
+        ],
+        "initial_card": {
+            "color": "GREEN",
+            "type": "NUMBER",
+            "number": 4
+        },
+        "first_player_id": "p1",
+        "timestamp": "2026-03-04T17:50:01Z"
+    },
+    "id": "..."
+}
+```
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `game_id` | `string` | Oyun ID'si |
+| `game_type` | `string` | Oyun tipi (her zaman `"UNO"`) |
+| `players` | `PlayerStateDto[]` | Tüm oyuncuların durumu |
+| `initial_card` | `CardDto` | İlk açılan kart |
+| `first_player_id` | `string` | İlk oynayacak oyuncu |
+| `timestamp` | `datetime` | Event zamanı (ISO 8601) |
+
+---
+
+#### 3. `game.card_played` — Kart Atıldı
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.card_played",
+    "params": {
+        "game_id": "game-123",
+        "player_id": "p1",
+        "card": {
+            "color": "RED",
+            "type": "NUMBER",
+            "number": 7
+        },
+        "remaining_cards": 5,
+        "is_uno": false,
+        "game_state": {
+            "game_id": "game-123",
+            "game_status": "IN_PROGRESS",
+            "current_round": 1,
+            "current_turn_number": 3,
+            "current_player_id": "p2",
+            "is_clockwise": true,
+            "draw_penalty": 0,
+            "last_played_card": {
+                "color": "RED",
+                "type": "NUMBER",
+                "number": 7
+            },
+            "players": [
+                {
+                    "player_id": "p1",
+                    "player_name": "Ahmet",
+                    "card_count": 5,
+                    "score": 0,
+                    "status": "ACTIVE",
+                    "joined_at": "2026-03-04T17:50:00Z"
+                }
+            ],
+            "created_at": "2026-03-04T17:50:00Z",
+            "updated_at": "2026-03-04T17:52:15Z"
+        },
+        "timestamp": "2026-03-04T17:52:15Z"
+    },
+    "id": "..."
+}
+```
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `game_id` | `string` | Oyun ID'si |
+| `player_id` | `string` | Kartı atan oyuncu |
+| `card` | `CardDto` | Atılan kart bilgisi |
+| `remaining_cards` | `int` | Atan oyuncunun kalan kart sayısı |
+| `is_uno` | `bool` | Oyuncunun 1 kartı mı kaldı? |
+| `game_state` | `UnoGameStateDto` | Güncel oyun durumu |
+| `timestamp` | `datetime` | Event zamanı |
+
+---
+
+#### 4. `game.card_drawn` — Kart Çekildi
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.card_drawn",
+    "params": {
+        "game_id": "game-123",
+        "player_id": "p2",
+        "cards_drawn": 1,
+        "total_cards": 8,
+        "reason": "VOLUNTARY",
+        "timestamp": "2026-03-04T17:53:00Z"
+    },
+    "id": "..."
+}
+```
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `game_id` | `string` | Oyun ID'si |
+| `player_id` | `string` | Kart çeken oyuncu |
+| `cards_drawn` | `int` | Çekilen kart adedi |
+| `total_cards` | `int` | Çektikten sonra elde toplam kart sayısı |
+| `reason` | `string` | Çekme sebebi: `"VOLUNTARY"` |
+| `timestamp` | `datetime` | Event zamanı |
+
+---
+
+#### 5. `game.turn_changed` — Tur Değişti
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.turn_changed",
+    "params": {
+        "game_id": "game-123",
+        "previous_player_id": "p1",
+        "current_player_id": "p2",
+        "turn_number": 4,
+        "is_clockwise": true,
+        "timestamp": "2026-03-04T17:52:16Z"
+    },
+    "id": "..."
+}
+```
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `game_id` | `string` | Oyun ID'si |
+| `previous_player_id` | `string` | Önceki oyuncu |
+| `current_player_id` | `string` | Yeni sırası gelen oyuncu |
+| `turn_number` | `int` | Tur numarası |
+| `is_clockwise` | `bool` | Oyun yönü (saat yönü mü?) |
+| `timestamp` | `datetime` | Event zamanı |
+
+---
+
+#### 6. `game.ended` — Oyun Bitti
+
+```json
+{
+    "jsonrpc": "2.0",
+    "method": "game.ended",
+    "params": {
+        "game_id": "game-123",
+        "winner_id": "p1",
+        "winner_name": "Ahmet",
+        "final_scores": {
+            "p1": 0,
+            "p2": 0,
+            "p3": 0
+        },
+        "total_turns": 42,
+        "duration_seconds": 320.5,
+        "timestamp": "2026-03-04T18:00:00Z"
+    },
+    "id": "..."
+}
+```
+
+| Alan | Tip | Açıklama |
+|------|-----|----------|
+| `game_id` | `string` | Oyun ID'si |
+| `winner_id` | `string?` | Kazanan oyuncu ID'si |
+| `winner_name` | `string?` | Kazanan oyuncu adı |
+| `final_scores` | `object` | `{ "playerId": score }` formatında son skorlar |
+| `total_turns` | `int` | Toplam oynanan tur sayısı |
+| `duration_seconds` | `double` | Oyun süresi (saniye) |
+| `timestamp` | `datetime` | Event zamanı |
+
+---
+
+### 🔴 Hata Yanıtı Formatı
+
+Herhangi bir hata durumunda:
+
+```json
+{
+    "jsonrpc": "2.0",
+    "error": {
+        "code": -32000,
+        "message": "Bu kart atilamaz!"
+    },
+    "id": "req-1"
+}
+```
+
+| Hata Kodu | Açıklama |
+|-----------|----------|
+| `-32700` | Geçersiz JSON formatı |
+| `-32601` | Bilinmeyen metod |
+| `-32603` | Sunucu içi hata |
+| `-32000` | Oyun kuralı ihlali (ör: geçersiz kart, sıra başkasında) |
+
+---
+
+### 📦 DTO (Data Transfer Object) Şemaları
+
+#### `CardDto`
+
+```json
+{
+    "color": "RED | BLUE | GREEN | YELLOW | WILD",
+    "type": "NUMBER | SKIP | REVERSE | DRAW_TWO | WILD | WILD_DRAW_FOUR",
+    "number": 0
+}
+```
+
+#### `PlayerStateDto`
+
+```json
+{
+    "player_id": "p1",
+    "player_name": "Ahmet",
+    "card_count": 7,
+    "score": 0,
+    "status": "ACTIVE | WAITING | ELIMINATED",
+    "joined_at": "2026-03-04T17:50:00Z"
+}
+```
+
+#### `UnoGameStateDto`
+
+```json
+{
+    "game_id": "game-123",
+    "game_status": "WAITING | IN_PROGRESS | PAUSED | COMPLETED | CANCELLED",
+    "current_round": 1,
+    "current_turn_number": 5,
+    "current_player_id": "p2",
+    "is_clockwise": true,
+    "draw_penalty": 0,
+    "last_played_card": { "color": "RED", "type": "NUMBER", "number": 7 },
+    "players": [ ],
+    "created_at": "2026-03-04T17:50:00Z",
+    "updated_at": "2026-03-04T17:55:30Z"
+}
+```
+
+#### `PlayerDisconnectedParams`
+
+```json
+{
+    "game_id": "game-123",
+    "player_id": "p1",
+    "reason": "connection_lost",
+    "timestamp": "2026-03-04T17:55:00Z"
+}
+```
+
+---
+
+### 🌐 REST API Yanıt Formatları
+
+#### `GET /api/status`
+
+```json
+{
+    "status": "running",
+    "game_id": "game-123",
+    "connected_players": ["p1", "p2", "p3"],
+    "connection_count": 3
+}
+```
+
+#### `GET /api/state`
+
+Oyunun anlık tam durumunu JSON olarak döndürür (format: `UnoGameStateDto`).
 
 ---
 
