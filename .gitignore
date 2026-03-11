@@ -1,0 +1,12 @@
+## .NET Build çıktıları
+bin/
+obj/
+
+## IDE ayarları
+.vs/
+*.user
+*.suo
+
+## OS dosyaları
+Thumbs.db
+.DS_Store

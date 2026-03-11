@@ -1,13 +1,15 @@
-﻿using UnoGame.Core;
+using UnoGame.Core;
 using UnoGame.Models.Cards;
 using UnoGame.Models.States;
 using GameCore.Models;
 using UnoGame.Backend.Services;
 using UnoGame.Backend.WebSocket;
+using UnoGame.Database;
 using System.Net.WebSockets;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 builder.WebHost.UseUrls("http://localhost:5000");
 
 var app = builder.Build();
@@ -38,9 +40,21 @@ Console.WriteLine("✅ 3 oyuncu eklendi\n");
 var connectionManager = new WebSocketConnectionManager();
 WebSocketHandler? wsHandler = null;
 
+// MongoDB Game Info Service — StartGame'den ÖNCE kaydedilmeli (GameStarted eventini yakalar)
+var mongoSettings = new MongoDbSettings();
+builder.Configuration.GetSection("MongoDb").Bind(mongoSettings);
+var mongoRepository = new MongoGameRepository(mongoSettings);
+var gameInfoService = new GameInfoService(
+    "game-123",
+    mongoRepository,
+    (UnoGameState)game.State,
+    game.Players
+);
+game.AddEventListenerAsync(gameInfoService);
+
 game.StartGame();
 
-// WebSocket Event Listener — oyun eventlerini broadcast eder
+// WebSocket Event Listener — oyun eventlerini broadcast eder (TurnManager gerektirir)
 var wsEventListener = new WebSocketEventListener(
     connectionManager,
     (UnoGameState)game.State,
@@ -49,7 +63,7 @@ var wsEventListener = new WebSocketEventListener(
 );
 game.AddEventListenerAsync(wsEventListener);
 
-// JSON-RPC Backend Service — event loglaması
+// JSON-RPC Backend Service — event loglaması (TurnManager gerektirir)
 var backendService = new JsonRpcBackendService(
     "game-123",
     (UnoGameState)game.State,
@@ -60,6 +74,7 @@ game.AddEventListenerAsync(backendService);
 
 wsHandler = new WebSocketHandler(game, connectionManager);
 
+Console.WriteLine("✅ MongoDB Game Info Service aktif!");
 Console.WriteLine("✅ WebSocket Event Listener aktif!");
 Console.WriteLine("✅ JSON-RPC Backend Service aktif!\n");
 
