@@ -32,6 +32,7 @@ WebSocket üzerinden anlık iletişim • JSON-RPC 2.0 protokolü • Event-Driv
 - [Oyun Kuralları](#-oyun-kuralları)
 - [Test Arayüzü](#-test-arayüzü)
 - [Geliştirme Notları](#-geliştirme-notları)
+- [Benchmark Sonuçları](#-benchmark-sonuçları)
 
 ---
 
@@ -1262,6 +1263,84 @@ Proje, aşağıdaki GameCore bileşenlerini kullanır:
 
 ---
 
+## 📊 Benchmark Sonuçları
+
+```
+╔══════════════════════════════════════════════════════════════╗
+║         UNO GAME — BENCHMARK & RAM ANALİZİ                 ║
+║         Sunucu Boyutlandırma Raporu                        ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━ TEST 1: Baseline RAM Ölçümü ━━━
+  Managed Heap (GC)  : 79,16 KB
+  Working Set (OS)   : 22,43 MB
+
+━━━ TEST 2: Tek Oyun Bellek Maliyeti ━━━
+  Oyun Öncesi        : 85,69 KB
+  Oyun Sonrası       : 92,16 KB
+  Tek Oyun Maliyeti  : 6,47 KB
+  (4 oyuncu, 7'şer kart, 108 kartlık deste)
+
+━━━ TEST 3: Ölçeklenme Testi (Eşzamanlı Oyunlar) ━━━
+
+   Oyun Sayısı │     Toplam RAM │    Oyun Başına │    Working Set │   Oluşturma Süresi
+  ──────────────┼────────────────┼────────────────┼────────────────┼───────────────────
+            10 │       87,43 KB │        8,74 KB │       25,99 MB │            0,4 ms
+            50 │      410,99 KB │        8,22 KB │       26,31 MB │            1,7 ms
+           100 │      830,05 KB │        8,30 KB │       26,72 MB │            3,2 ms
+           500 │        4,09 MB │        8,37 KB │       30,00 MB │           14,5 ms
+          1000 │        8,19 MB │        8,38 KB │       34,41 MB │           34,6 ms
+
+━━━ TEST 4: Gameplay Simülasyonu (100 Oyun) ━━━
+  Tamamlanan Oyunlar : 100 / 100
+  Toplam Tur Sayısı  : 5706
+  Atılan Kart        : 4453
+  Çekilen Kart       : 1745
+  Toplam Süre        : 51,0 ms
+  Tur Başına Süre    : 0,0089 ms
+  Gameplay RAM Delta : 34,37 KB
+
+━━━ TEST 5: GC & Bellek Detay Raporu ━━━
+  GC Collection Sayıları (gameplay sırasında):
+    Gen 0 : 4 collection
+    Gen 1 : 3 collection
+    Gen 2 : 3 collection
+
+  GC Heap Bilgileri:
+    Heap Boyutu       : 148,81 KB
+    Committed Bellek  : 172,00 KB
+    Available Bellek  : 15,83 GB
+
+  İşlem Bellek Bilgileri:
+    Working Set       : 26,71 MB
+    Private Memory    : 8,52 MB
+    Virtual Memory    : 2310,51 GB
+    Paged Memory      : 8,52 MB
+
+╔══════════════════════════════════════════════════════════════╗
+║                    SONUÇ ÖZETİ                              ║
+╚══════════════════════════════════════════════════════════════╝
+
+  Tek Oyun RAM Maliyeti       : ~6,47 KB
+  1000 Oyun Toplam RAM        : ~8,19 MB
+  1000 Oyun Working Set       : ~34,41 MB
+  Oyun Başına Ortalama RAM    : ~8,38 KB
+  İşlem Toplam Working Set    : ~26,71 MB
+  Tur İşlem Hızı              : ~0,0089 ms/tur
+
+  ─── Sunucu Boyutlandırma Önerisi ───
+  • 1 GB RAM ile tahmini eşzamanlı oyun: ~125086 oyun
+  • 2 GB RAM ile tahmini eşzamanlı oyun: ~250172 oyun
+  • 4 GB RAM ile tahmini eşzamanlı oyun: ~500345 oyun
+  • 8 GB RAM ile tahmini eşzamanlı oyun: ~1000691 oyun
+
+  Not: Bu değerler sadece oyun motoru için geçerlidir.
+  WebSocket bağlantıları, MongoDB ve ASP.NET overhead'i hariçtir.
+  Gerçek sunucu yükünde ek ~200-500 MB OS/runtime overhead beklenmelidir.
+```
+
+---
+
 ## 📄 Lisans
 
 Bu proje MIT Lisansı ile lisanslanmıştır.
@@ -1271,7 +1350,5 @@ Bu proje MIT Lisansı ile lisanslanmıştır.
 <div align="center">
 
 **Geliştirici**: [Rexiusq](https://github.com/Rexiusq)
-
-⭐ Projeyi beğendiyseniz yıldız vermeyi unutmayın!
 
 </div>

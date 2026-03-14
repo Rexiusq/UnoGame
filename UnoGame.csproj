@@ -1,7 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
   <ItemGroup>
     <ProjectReference Include="..\GameCore\GameCore.csproj" />
+  </ItemGroup>
+
+  <!-- Benchmark projesi kendi başına derlenir -->
+  <ItemGroup>
+    <Compile Remove="Benchmark\**" />
+    <Content Remove="Benchmark\**" />
+    <EmbeddedResource Remove="Benchmark\**" />
+    <None Remove="Benchmark\**" />
   </ItemGroup>
 
   <ItemGroup>
